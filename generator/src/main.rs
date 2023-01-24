@@ -248,9 +248,15 @@ impl ParameterDataExt for openapiv3::ParameterData {
 
                                 //println!("XXX min/max length");
                                 //}
-
                                 match &st.format {
-                                    Item(DateTime) => "chrono::DateTime<chrono::Utc>".to_string(),
+                                    // FIXME: github used `date-time` format when it is an actual date-time range
+                                    // Convert this to an Option<&str> so the interface do not change for people not
+                                    // using the parameter currently.
+                                    // https://github.com/github/rest-api-description/issues/2088
+                                    Item(DateTime) => match self.name.as_str() {
+                                        "created" => "Option<&str>".to_string(),
+                                        _ => "chrono::DateTime<chrono::Utc>".to_string(),
+                                    },
                                     Item(Date) => "chrono::NaiveDate".to_string(),
                                     Item(Password) => "&str".to_string(),
                                     // TODO: as per the spec this is base64 encoded chars.
@@ -1417,7 +1423,6 @@ impl TypeSpace {
         } else {
             "".to_string()
         };
-
         let mut s = sc.clone();
 
         // If we have an additional description and it is better than our original,
