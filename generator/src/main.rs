@@ -2387,7 +2387,10 @@ pub enum ClientError {"#);
             #[error("Rate limited for the next {duration} seconds")]
             RateLimited{
                 duration: u64,
-            },"#);
+            },
+            /// str convertion error HeaderValue to str
+            #[error(transparent)]
+            ToStrError(#[from] reqwest::header::ToStrError),"#);
         }
         TemplateType::GenericApiKey | TemplateType::GenericClientCredentials => {
             a(r#"/// utf8 convertion error

@@ -241,6 +241,28 @@ impl Client {
         Ok(resp)
     }
 
+    async fn get_header(&self, uri: &str, header_name: &reqwest::header::HeaderName) -> ClientResult<String> {
+        let resp = self
+            .request_raw(
+                http::Method::GET,
+                uri,
+                crate::Message {
+                    body: None,
+                    content_type: None,
+                },
+                crate::utils::MediaType::Json,
+                crate::auth::AuthenticationConstraint::Unconstrained,
+            )
+            .await?;
+        let location = resp
+            .headers()
+            .get(header_name)
+            .ok_or(ClientError::HttpError{status: resp.status(), error: format!("Missing {} header", header_name)})?
+            .to_str()?
+            .to_string();
+        Ok(location)
+    }
+
     async fn request<Out>(
         &self,
         method: http::Method,
