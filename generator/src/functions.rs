@@ -304,6 +304,22 @@ pub fn generate_files(
                 response_type = "String".to_string();
             }
 
+            // If we did not find a content type ID, we may need to return a header
+            // Check if the response is a header and return the first one.
+            // Default to string.
+            if proper_name == "GitHub" && tid == TypeId(0) {
+                let response = o.responses.responses.first().unwrap();
+                if let Ok(i) = response.1.item() {
+                    let header = i.headers.first();
+                    if let Some((header_name, _value)) = header {
+                        fn_inner = format!(
+                            r#"let header_name = reqwest::header::HeaderName::try_from("{header_name}")?;
+                        self.client.get_header(&url, &header_name).await"#
+                        );
+                        response_type = "String".to_string();
+                    }
+                }
+            }
             if let Some(te) = ts.id_to_entry.get(&tid) {
                 // If we have a one of, we can generate a few different subfunctions to
                 // help as well.

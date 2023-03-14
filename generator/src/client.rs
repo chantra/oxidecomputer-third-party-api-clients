@@ -194,17 +194,14 @@ impl Client {
         }
     }
 
-    async fn request<Out>(
+    async fn request_raw(
         &self,
         method: http::Method,
         uri: &str,
         message: Message,
         media_type: crate::utils::MediaType,
         authentication: crate::auth::AuthenticationConstraint,
-    ) -> ClientResult<(Option<crate::utils::NextLink>, Out)>
-    where
-        Out: serde::de::DeserializeOwned + 'static + Send,
-    {
+    ) -> ClientResult<reqwest::Response> {
         #[cfg(feature = "httpcache")]
         let uri2 = uri.to_string();
 
@@ -231,10 +228,7 @@ impl Client {
         }
 
         req = req.header(http::header::USER_AGENT, &*instance.agent);
-        req = req.header(
-            http::header::ACCEPT,
-            &media_type.to_string()
-        );
+        req = req.header(http::header::ACCEPT, &media_type.to_string());
 
         if let Some(auth_str) = auth {
             req = req.header(http::header::AUTHORIZATION, &*auth_str);
@@ -243,7 +237,46 @@ impl Client {
         if let Some(body) = message.body {
             req = req.body(body);
         }
-        let response = req.send().await?;
+        let resp = req.send().await?;
+        Ok(resp)
+    }
+
+    async fn get_header(&self, uri: &str, header_name: &reqwest::header::HeaderName) -> ClientResult<String> {
+        let resp = self
+            .request_raw(
+                http::Method::GET,
+                uri,
+                crate::Message {
+                    body: None,
+                    content_type: None,
+                },
+                crate::utils::MediaType::Json,
+                crate::auth::AuthenticationConstraint::Unconstrained,
+            )
+            .await?;
+        let location = resp
+            .headers()
+            .get(header_name)
+            .ok_or(ClientError::HttpError{status: resp.status(), error: format!("Missing {} header", header_name)})?
+            .to_str()?
+            .to_string();
+        Ok(location)
+    }
+
+    async fn request<Out>(
+        &self,
+        method: http::Method,
+        uri: &str,
+        message: Message,
+        media_type: crate::utils::MediaType,
+        authentication: crate::auth::AuthenticationConstraint,
+    ) -> ClientResult<(Option<crate::utils::NextLink>, Out)>
+    where
+        Out: serde::de::DeserializeOwned + 'static + Send,
+    {
+        let response = self
+            .request_raw(method, uri, message, media_type, authentication)
+            .await?;
 
         #[cfg(feature = "httpcache")]
         let instance2 = <&Client>::clone(&self);
