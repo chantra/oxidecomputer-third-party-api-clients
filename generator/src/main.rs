@@ -2426,6 +2426,9 @@ pub enum ClientError {"#);
     ReqwestError(#[from] reqwest::Error),
     /// Errors returned by reqwest::header
     #[error(transparent)]
+    InvalidHeaderName(#[from] reqwest::header::InvalidHeaderName),
+    /// Errors returned by reqwest::header
+    #[error(transparent)]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
     /// Errors returned by reqwest middleware
     #[error(transparent)]
